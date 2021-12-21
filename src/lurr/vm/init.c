@@ -3,19 +3,23 @@
 
 
 PyObject *
-tr_vm_dump_frame(PyObject *self, PyObject *args);
+vm_dump_frame(PyObject *self, PyObject *args);
 
 PyObject *
-tr_vm_save_state(PyObject *self, PyObject *args);
+vm_save_state(PyObject *self, PyObject *args);
+
+PyObject *
+vm_restore_state(PyObject *self, PyObject *args);
 
 int
-tr_vm_state_init();
+vm_state_init();
 
 static PyMethodDef VmMethods[] =
 {
-    {"dump_frame",  tr_vm_dump_frame, METH_VARARGS,
+    {"dump_frame",  vm_dump_frame, METH_VARARGS,
      "debug function, print frame details to stdout"},
-    {"save_state",  tr_vm_save_state, METH_VARARGS, "TBD"},
+    {"save_state",  vm_save_state, METH_VARARGS, "TBD"},
+    {"restore_state",  vm_restore_state, METH_VARARGS, "TBD"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -32,7 +36,7 @@ static struct PyModuleDef vm_module =
 PyMODINIT_FUNC
 PyInit_vm(void)
 {
-    if (!tr_vm_state_init())
+    if (!vm_state_init())
     {
         return NULL;
     }

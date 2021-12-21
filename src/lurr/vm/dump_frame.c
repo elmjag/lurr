@@ -41,7 +41,7 @@ _dump_f_localsplus(PyObject *f_localsplus[1], int co_nlocals)
 }
 
 PyObject *
-tr_vm_dump_frame(PyObject *self, PyObject *args)
+vm_dump_frame(PyObject *self, PyObject *args)
 {
     PyFrameObject *frame;
 

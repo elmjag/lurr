@@ -1,4 +1,4 @@
-name: pycall
+name: lurr
 channels:
   - conda-forge
 dependencies:
