@@ -39,20 +39,36 @@ class Recorder(Tracer):
         self.last_shown_frame = frame
         self.dis.dis(frame.f_code, file=self.stderr)
 
+    def _print_trace_call(self, frame, event, arg):
+        self._print(f"{event}:", end="")
+
+        match event:
+            case "call":
+                self._print(f"           frame: {id(frame):x}")
+                self._show_frame(frame)
+                self._print()
+            case "line":
+                self._print(f"           {frame.f_code.co_filename}:{frame.f_lineno}")
+                self._print()
+            case "opcode":
+                code_obj = frame.f_code
+                opcode = code_obj.co_code[frame.f_lasti]
+                opcode_arg = code_obj.co_code[frame.f_lasti + 1]
+
+                self._print(f"{frame.f_lasti:8} {self.opname[opcode]:25} {opcode_arg}")
+            case "return":
+                self._print(f"         {arg}")
+
     def __call__(self, frame, event, arg):
         if not self.tracing_on:
             frame.f_trace_opcodes = True
             return None
 
-        self._print(f"{frame=} {event=} {arg=}")
-
-        if event == "call":
-            self._show_frame(frame)
+        self._print_trace_call(frame, event, arg)
 
         if event == "opcode":
             res = self.get_builtin_call(frame)
             if res:
-                print(f"INTERCEPT THIS {res=}")
                 func, pos = res
                 self.set_stack(
                     frame,

@@ -11,6 +11,13 @@ class ModuleWrapper:
     name: str  # '__name__'
 
 
+class NullType:
+    pass
+
+
+Null = NullType()
+
+
 def _wrap_dict(value):
     return {_wrap(k): _wrap(v) for k, v in value.items()}
 
@@ -60,4 +67,5 @@ def _unwrap(value):
 
 
 def read_val(file):
-    return _unwrap(load(file))
+    val = load(file)
+    return _unwrap(val)

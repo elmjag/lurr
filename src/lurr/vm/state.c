@@ -8,7 +8,8 @@
 
 static PyObject *write_val_func = NULL;
 static PyObject *read_val_func = NULL;
-
+static PyObject *NullObj = NULL;
+static PyObject *NullType = NULL;
 
 static int
 _call_write_val(PyObject *file, PyObject *obj)
@@ -56,7 +57,14 @@ _save_fastlocals(PyObject *file, PyFrameObject *frame)
 
     for (int i = 0; i < co_nlocals; i += 1)
     {
-        if (_call_write_val(file, frame->f_localsplus[i]) == _ERR)
+        PyObject *obj = frame->f_localsplus[i];
+        /* 'wrap' NULL slots into python Null object */
+        if (obj == NULL)
+        {
+            obj = NullObj;
+        }
+
+        if (_call_write_val(file, obj) == _ERR)
         {
             return _ERR;
         }
@@ -79,7 +87,18 @@ _restore_fastlocals(PyObject *file, PyFrameObject *frame)
             return _ERR;
         }
 
-        Py_DECREF(frame->f_localsplus[i]);
+        /* 'unwrap' NULL slots from python 'Null' object */
+        int isNull = PyObject_IsInstance(val, NullType);
+        if (isNull == -1)
+        {
+            return _ERR;
+        }
+        if (isNull == 1)
+        {
+            val = NULL;
+        }
+
+        Py_XDECREF(frame->f_localsplus[i]);
         frame->f_localsplus[i] = val;
     }
 
@@ -247,20 +266,47 @@ vm_state_init()
         return _ERR;
     }
 
+    /*
+     * get reference to 'lurr.data.write_val()' function
+     */
     write_val_func = PyMapping_GetItemString(mod_dic, "write_val");
     if (write_val_func == NULL)
     {
-        printf("error doing PyMapping_GetItemString\n");
+        printf("error loading lurr.data.write_val()\n");
         return _ERR;
     }
 
+    /*
+     * get reference to 'lurr.data.read_val()' function
+     */
     read_val_func = PyMapping_GetItemString(mod_dic, "read_val");
     if (read_val_func == NULL)
     {
-        printf("error doing PyMapping_GetItemString\n");
+        printf("error loading lurr.data.read_val()\n");
         return _ERR;
     }
 
+    /*
+     * get reference to 'lurr.data.Null' object
+     */
+    NullObj = PyMapping_GetItemString(mod_dic, "Null");
+    if (NullObj == NULL)
+    {
+        printf("error loading lurr.data.Null\n");
+        return _ERR;
+    }
+
+    /*
+     * get reference to 'lurr.data.NullType' class
+     */
+    NullType = PyMapping_GetItemString(mod_dic, "NullType");
+    if (NullObj == NULL)
+    {
+        printf("error loading lurr.data.NullType\n");
+        return _ERR;
+    }
+
+    /* clean-up */
     Py_DECREF(mod_dic);
     Py_DECREF(mod);
 

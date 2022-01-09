@@ -36,7 +36,12 @@ _dump_f_localsplus(PyObject *f_localsplus[1], int co_nlocals)
     for (int i = 0; i < co_nlocals; i += 1)
     {
         PyObject *item = f_localsplus[i];
-        printf("    f_localsplus[%d] = %p (%s)\n", i, item, item->ob_type->tp_name);
+        printf("    f_localsplus[%d] = %p", i, item);
+        if (item != NULL)
+        {
+            printf(" (%s)", item->ob_type->tp_name);
+        }
+        printf("\n");
     }
 }
 

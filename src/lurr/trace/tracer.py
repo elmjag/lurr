@@ -36,10 +36,10 @@ class Tracer:
         if debug_logging:
             self._print = self._do_print
 
-    def _do_print(self, *args):
-        print(*args, file=self.stderr)
+    def _do_print(self, *args, **kwargs):
+        print(*args, **kwargs, file=self.stderr)
 
-    def _print(self, *arg):
+    def _print(self, *arg, **kwargs):
         # swallow all self._print() calls by default
         pass
 
