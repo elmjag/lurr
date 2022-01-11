@@ -45,9 +45,7 @@ class ReplaySocket:
 class Command:
     name = None
     help_text = None
-
-    def run(self, replay_socket: ReplaySocket):
-        raise NotImplementedError()
+    requires_running_script = False
 
 
 class HelpCmd(Command):
@@ -68,11 +66,13 @@ class OpcodeCmd(Command):
 class NextCmd(Command):
     name = "next"
     help_text = "next line"
+    requires_running_script = True
 
 
 class StepCmd(Command):
     name = "step"
     help_text = "next bytecode"
+    requires_running_script = True
 
 
 class VarsCmd(Command):
@@ -125,7 +125,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_commands():
+def get_possible_commands():
     stdout.write("(dbg) ")
     stdout.flush()
     line = stdin.readline()
@@ -144,6 +144,26 @@ def ambiguous_command(commands):
     print("ambiguous command specified:")
     for command in commands:
         print(f"  {command.value.name}")
+
+
+def get_next_command(script_running: bool):
+    while True:
+        commands = list(get_possible_commands())
+
+        if len(commands) == 0:
+            print("que?")
+            continue
+
+        if len(commands) > 1:
+            ambiguous_command(commands)
+            continue
+
+        command = commands[0]
+        if not script_running and command.value.requires_running_script:
+            print("script have terminated")
+            continue
+
+        return command
 
 
 class SourceFile:
@@ -232,10 +252,11 @@ def goto_next_line(reply_socket: ReplaySocket):
     reply_socket.step_line()
     frame = reply_socket.get_frame()
 
-    current_line = SourceFile(frame).get_current_line()
-    if current_line:
-        lineno, line = current_line
-        print(f"{lineno:{3}} {line}", end="")
+    if not frame.is_last:
+        current_line = SourceFile(frame).get_current_line()
+        if current_line:
+            lineno, line = current_line
+            print(f"{lineno:{3}} {line}", end="")
 
     return frame
 
@@ -244,9 +265,10 @@ def goto_next_opcode(reply_socket: ReplaySocket):
     reply_socket.step_opcode()
     frame = reply_socket.get_frame()
 
-    lineno, i, op_name, arg, arg_note = Opcodes(frame).get_current_opcode()
-    arg_note = "" if arg_note is None else f" ({arg_note})"
-    print(f"{lineno:{5}} {i:{12}} {op_name:{20}} {arg:{3}}{arg_note}")
+    if not frame.is_last:
+        lineno, i, op_name, arg, arg_note = Opcodes(frame).get_current_opcode()
+        arg_note = "" if arg_note is None else f" ({arg_note})"
+        print(f"{lineno:{5}} {i:{12}} {op_name:{20}} {arg:{3}}{arg_note}")
 
     return frame
 
@@ -336,21 +358,11 @@ def show_frame(frame):
 
 
 def run_commands(reply_socket: ReplaySocket):
+    script_running = True
     frame = reply_socket.get_frame()
 
     while True:
-        commands = list(get_commands())
-
-        if len(commands) == 0:
-            print("que?")
-            continue
-
-        if len(commands) > 1:
-            ambiguous_command(commands)
-            continue
-
-        command = commands[0]
-        match command:
+        match get_next_command(script_running):
             case Commands.HELP:
                 print_help()
             case Commands.SOURCE:
@@ -368,7 +380,11 @@ def run_commands(reply_socket: ReplaySocket):
             case Commands.QUIT:
                 break
             case _:
-                print(f"'{command.value.name}' not implemented")
+                assert False, "unexpected command"
+
+        if script_running and frame.is_last:
+            print("script terminated")
+            script_running = False
 
     print("goodbye")
 

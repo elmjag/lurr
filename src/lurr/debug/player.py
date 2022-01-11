@@ -49,8 +49,8 @@ class Replay(Tracer):
 
         return data.decode()
 
-    def _push_frame_state(self, frame):
-        self._ctrl_socket.send(encode_frame(frame))
+    def _push_frame_state(self, frame, last_frame=False):
+        self._ctrl_socket.send(encode_frame(frame, last_frame))
 
     def _abort(self, frame, event, arg):
         raise self.ReplayAborted
@@ -59,6 +59,8 @@ class Replay(Tracer):
         if not self.tracing_on:
             frame.f_trace_opcodes = True
             return None
+
+        self.last_frame = frame
 
         if event == "opcode":
             res = self.get_builtin_call(frame)
@@ -87,9 +89,10 @@ def _run_tracer(source_file: Path, ctrl_socket):
     record_file = get_record_file(script_file)
 
     with record_file.open("rb") as rec_f:
-        runscript(
-            script_file, Replay(script_file, Recording(rec_f), ctrl_socket, False)
-        )
+        replay = Replay(script_file, Recording(rec_f), ctrl_socket, debug_logging=False)
+        runscript(script_file, replay)
+
+        replay._push_frame_state(replay.last_frame, last_frame=True)
 
 
 def start_player(source_file: Path):
@@ -107,6 +110,8 @@ def start_player(source_file: Path):
         _run_tracer(source_file, child)
     except Replay.ReplayAborted:
         pass
+
+    child.close()
     # terminate process here,
     # to avoid returning to caller of start_player()
     exit(0)

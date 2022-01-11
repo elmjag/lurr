@@ -21,13 +21,17 @@ class Frame:
     locals: dict  # f_locals
     code: CodeObject  # f_code
 
+    # flags is set when we are pushing last frame,
+    # after the script have terminated
+    is_last: bool
+
     @property
     def source_file(self):
         # shortcut for code.filename
         return self.code.filename
 
 
-def encode_frame(frame) -> bytes:
+def encode_frame(frame, last_frame: bool) -> bytes:
     def _get_vars(vars):
         locals = {}
 
@@ -53,6 +57,7 @@ def encode_frame(frame) -> bytes:
         globals=_get_vars(frame.f_globals),
         locals=_get_vars(frame.f_locals),
         code=code,
+        is_last=last_frame,
     )
 
     return dumps(f)
